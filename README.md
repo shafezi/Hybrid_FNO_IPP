@@ -83,18 +83,6 @@ bash scripts/run_full_sweep_40bots.sh
 
 Each runs all combinations of `{Matérn ν=0.5, 1.5, 2.5; RBF}` × `{uncertainty, GP-UCB, MI}` × 5 seeds × 5 methods at the chosen robot count — about 300 episodes per robot count. Results are written under `results/dynamic_ipp/final/`.
 
-### Aggregate metrics and produce figures
-
-```bash
-python scripts/aggregate_final_metrics.py     # builds master_metrics.csv
-python scripts/make_paper_figures.py          # bar charts, scaling, Pareto
-python scripts/make_system_diagram.py         # closed-loop schematic
-python scripts/run_final_psd.py --n_robots 20 --kernel matern --nu 1.5 \
-    --t0 30 --seed 42 --acquisition uncertainty_only
-python scripts/make_talk_slides.py            # 7-min video deck (.pptx)
-```
-
----
 
 ## Repository map at a glance
 
