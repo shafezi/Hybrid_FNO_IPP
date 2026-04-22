@@ -4,8 +4,7 @@
 
 **Author:** Shayesteh Hafezi · Department of Naval Architecture and Marine Engineering, University of Michigan · `shafezi@umich.edu`
 
-**Paper:** [`paper/main.tex`](paper/main.tex) (compiles to a 6-page IEEE conference manuscript; submitted to ICRA 2026).
-**Poster:** [`paper/poster.tex`](paper/poster.tex) (A0 landscape, tikzposter).
+This repository contains the **code** for the framework, all experiments, and all analysis/figure-generation scripts. The accompanying ICRA paper, conference poster, and full result tree are not in the repo (the paper is under submission; the result tree is ~17 GB). See *Data and trained weights* and *Citation* below.
 
 ---
 
@@ -17,16 +16,13 @@
 | [`dynamic_ipp/`](dynamic_ipp/) | Episode rollout engine — wires the FNO/persistence prior together with the GP correction loop and multi-robot acquisition for a full assimilation horizon. |
 | [`scripts/`](scripts/) | All experiment, sweep, aggregation, and figure-generation scripts. The headline scripts are listed below. |
 | [`configs/`](configs/) | YAML configs for all experiment families (single-robot baseline, dynamic rollout, residual-GP). |
-| [`paper/`](paper/) | LaTeX sources for the ICRA submission and the A0 conference poster (tikzposter), plus the BibTeX file. |
 | [`training/`](training/) | OceanNet (FNO) training scripts and SLURM launch wrappers. |
 | [`docs/`](docs/) | Quick start, training info, and HPC cluster setup notes. |
-| [`results_sample/`](results_sample/) | Aggregated metrics (`master_metrics.csv`, `summary_final_step.csv`) and the headline figures used in the paper and poster. The full result tree (~17 GB of per-episode metrics, individual timestep figures, and videos) is **not** in the repo — see *Data and trained weights* below. |
+| [`data_loader_SSH*.py`](.) | ROMS sea-surface-height data loaders for FNO training. |
 
 ---
 
-## The closed-loop framework, in one diagram
-
-![System diagram](results_sample/system_diagram.png)
+## The closed-loop framework
 
 At every assimilation step:
 
@@ -36,7 +32,7 @@ At every assimilation step:
 4. Robots execute under a glider-speed budget (0.5 m/s) and observe `y_true(x_i)`; the GP refits.
 5. Corrected estimate `ŷ = ŷ_prior + μ_GP` feeds back into step 1.
 
-The framework treats `f` as a black box — the same code runs FNO, persistence, or no-prior.
+The framework treats `f` as a black box — the same code runs FNO, persistence, or no-prior. To regenerate the system diagram locally, run `python scripts/make_system_diagram.py`.
 
 ---
 
@@ -50,17 +46,11 @@ Standard RMSE evaluation systematically rewards methods that predict the climato
 | **FNO+GP**             | 0.94 | **0.90** |
 | Persist+GP             | 1.15 | 0.85 |
 
-The corresponding 1D wavenumber spectra and qualitative fields make the failure mode explicit:
-
-| Qualitative comparison | Power spectra |
-|---|---|
-| GP-only resembles the climatological mean; corrected methods recover mesoscale eddies. | GP-only collapses 4–5 orders of magnitude at high wavenumbers; corrected methods track ground truth across all $k$. |
-
-See [`results_sample/figures_paper/`](results_sample/figures_paper/) for the publication figures.
+The corresponding 1D wavenumber spectra and qualitative fields make the failure mode explicit: GP-only resembles the climatological mean and has spectra that collapse 4–5 orders of magnitude at high wavenumbers; FNO+GP and Persist+GP recover mesoscale eddies and track the ground-truth spectrum. Run `python scripts/make_paper_figures.py` after a sweep to regenerate the headline figures locally.
 
 ---
 
-## Reproducing the headline experiments
+## Reproducing the experiments
 
 ### Install
 
@@ -75,7 +65,7 @@ pip install -r requirements.txt
 Two artifacts are too large to ship in this repo:
 
 - **ROMS reanalysis SSH (≈ 5 GB)** — preprocessed northwest-Pacific SSH from the ROMS regional ocean model used to train OceanNet and to evaluate every experiment. Available on request to the author.
-- **Trained OceanNet (FNO) weights (≈ 400 MB)** — the 4-day single-step SSH predictor trained on 1993–2019 ROMS reanalysis. Available on request, or retrain with [`training/`](training/).
+- **Trained OceanNet (FNO) weights (≈ 400 MB)** — the 4-day single-step SSH predictor trained on 1993–2019 ROMS reanalysis. Available on request, or retrain with the scripts in [`training/`](training/).
 
 Place the data under `extracted_data/` and the model weights under `Models/`, matching the paths the configs expect.
 
@@ -85,26 +75,28 @@ Place the data under `extracted_data/` and the model weights under `Models/`, ma
 python scripts/run_dynamic_rollout_ipp.py --config configs/dynamic_rollout_ipp.yaml
 ```
 
-### Run the full headline sweep (20 robots)
+### Run the full headline sweep
 
 ```bash
+bash scripts/run_full_sweep_5bots.sh
 bash scripts/run_full_sweep_20bots.sh
+bash scripts/run_full_sweep_40bots.sh
 ```
 
-This runs all combinations of `{Matérn ν=0.5, 1.5, 2.5; RBF}` × `{uncertainty, GP-UCB, MI}` × 5 seeds × 5 methods at 20 robots — about 300 episodes per robot count. Repeat with `run_full_sweep_5bots.sh`, `run_full_sweep_40bots.sh`, etc.
+Each runs all combinations of `{Matérn ν=0.5, 1.5, 2.5; RBF}` × `{uncertainty, GP-UCB, MI}` × 5 seeds × 5 methods at the chosen robot count — about 300 episodes per robot count. Results are written under `results/dynamic_ipp/final/`.
 
-### Aggregate and produce paper figures
+### Aggregate metrics and produce figures
 
 ```bash
 python scripts/aggregate_final_metrics.py     # builds master_metrics.csv
 python scripts/make_paper_figures.py          # bar charts, scaling, Pareto
-python scripts/make_system_diagram.py         # Figure 1
+python scripts/make_system_diagram.py         # closed-loop schematic
 python scripts/run_final_psd.py --n_robots 20 --kernel matern --nu 1.5 \
     --t0 30 --seed 42 --acquisition uncertainty_only
-python scripts/make_talk_slides.py            # the 7-min video deck
+python scripts/make_talk_slides.py            # 7-min video deck (.pptx)
 ```
 
-Each script writes into `results/dynamic_ipp/final/` by default.
+Figures land in `results/dynamic_ipp/final/figures_paper/`.
 
 ---
 
@@ -119,14 +111,8 @@ release/
 ├── dynamic_ipp/                 # episode rollout
 ├── scripts/                     # experiments, sweeps, figures, video deck
 ├── configs/                     # YAML experiment configs
-├── paper/                       # main.tex, poster.tex, references.bib
 ├── training/                    # OceanNet (FNO) training scripts
 ├── docs/                        # quick start + cluster setup notes
-├── results_sample/              # aggregated metrics + headline figures
-│   ├── master_metrics.csv
-│   ├── summary_final_step.csv
-│   ├── system_diagram.png
-│   └── figures_paper/
 └── data_loader_SSH.py           # ROMS data loaders for FNO training
     data_loader_SSH_two_step.py
 ```
