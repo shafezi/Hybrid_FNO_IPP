@@ -32,8 +32,6 @@ At every assimilation step:
 4. Robots execute under a glider-speed budget (0.5 m/s) and observe `y_true(x_i)`; the GP refits.
 5. Corrected estimate `ŷ = ŷ_prior + μ_GP` feeds back into step 1.
 
-The framework treats `f` as a black box — the same code runs FNO, persistence, or no-prior. To regenerate the system diagram locally, run `python scripts/make_system_diagram.py`.
-
 ---
 
 ## Headline finding
@@ -96,8 +94,6 @@ python scripts/run_final_psd.py --n_robots 20 --kernel matern --nu 1.5 \
 python scripts/make_talk_slides.py            # 7-min video deck (.pptx)
 ```
 
-Figures land in `results/dynamic_ipp/final/figures_paper/`.
-
 ---
 
 ## Repository map at a glance
@@ -119,23 +115,6 @@ release/
 
 ---
 
-## Citation
-
-If you use this framework or evaluation methodology, please cite:
-
-```bibtex
-@inproceedings{hafezi2026modular,
-  title     = {A Modular Framework for Multi-Robot Adaptive Ocean Monitoring
-               with Gaussian-Process Residual Correction},
-  author    = {Hafezi, Shayesteh},
-  booktitle = {Proceedings of the IEEE International Conference on Robotics
-               and Automation (ICRA)},
-  year      = {2026},
-  note      = {Submitted}
-}
-```
-
----
 
 ## Acknowledgments
 
