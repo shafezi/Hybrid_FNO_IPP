@@ -1,0 +1,180 @@
+# =============================================================================
+# Dynamic Rollout IPP Experiment Configuration
+# =============================================================================
+# Run with:
+#   python scripts/run_dynamic_rollout_ipp.py --config configs/dynamic_rollout_ipp.yaml
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+checkpoint_path: ./Models/FNO_single_trialPECstep.pt
+data_dir:        ./extracted_data/
+output_dir:      ./results/dynamic_ipp/
+
+# ---------------------------------------------------------------------------
+# Dataset (must match FNO training setup)
+# ---------------------------------------------------------------------------
+test_year:  2020
+lead:       4           # timesteps ahead used during data loading (informational)
+delta_t:    1.0         # PEC integrator step size (matches training)
+
+# Load enough consecutive samples for rollout episodes.
+# Set large; actual available samples cap automatically.
+n_test_samples: 200
+
+# FNO architecture (must match checkpoint)
+fno_modes1: 128
+fno_modes2: 128
+fno_width:  20
+
+# Device: 'auto' | 'cpu' | 'cuda'
+device: cpu
+
+# ---------------------------------------------------------------------------
+# Dynamic rollout settings
+# ---------------------------------------------------------------------------
+
+# Number of independent episodes (each starts from a different t0)
+n_episodes: 50
+
+# Length of each rollout episode. Data is daily SSH (5-day smoothed).
+# FNO lead=4 -> 1 step = 4 days.  episode_length=15 -> 60-day rollout.
+episode_length: 5
+
+# How often to assimilate (every K forecast steps)
+# Data cadence is 1 sample/day; FNO lead=4 -> 1 step = 4 days.
+# K=1 -> assimilate every 4 days.  K=5 -> every 20 days.
+assimilation_interval: 1
+
+# Legacy: obs_per_assimilation is supported for backward compatibility.
+# If obs_per_robot_per_assim is set, it takes precedence.
+obs_per_assimilation: 1
+
+# GP mode:
+#   windowed   — GP resets at each assimilation time (models quasi-static discrepancy)
+#   cumulative — GP accumulates ALL observations over the episode
+gp_mode: cumulative
+
+# Forecast mode: controls the prediction prior
+#   fno         — use FNO one-step forecast (default, full system)
+#   persistence — use previous step's field as prior (no FNO)
+#   none        — no prior, GP models the full field directly (GP-only baseline)
+forecast_mode: fno
+
+# rollout_lead_stride: ground truth index stride per forecast step.
+# Set to cfg["lead"] (=4) if one PECstep advances by lead data timesteps,
+# or 1 if PECstep advances by a single 5-day timestep.
+rollout_lead_stride: 4    # one PECstep advances by lead=4 data timesteps (4 days)
+
+# Nudging gain applied to GP correction at assimilation steps:
+#   x_hat = x_prior + assimilation_gain * gp_mean
+# Values < 1.0 damp potentially over-confident corrections.
+assimilation_gain: 1.0
+
+# ---------------------------------------------------------------------------
+# Robot / motion settings
+# ---------------------------------------------------------------------------
+n_robots:          40       # number of robots (≥1); all choose simultaneously
+obs_per_robot_per_assim: 1  # one observation per robot per 20-day window
+# Total obs per assimilation = n_robots * obs_per_robot_per_assim
+
+n_candidates:      4000
+n_eval_cells:      200000   # larger than n_ocean (138438) -> uses ALL ocean cells
+max_step_distance: 0.0     # 0 = no constraint (overridden if glider_max_speed_mps > 0)
+# Physics-based reach: glider speed × step duration.  If > 0, auto-computes
+# max_step_distance = speed_m × step_days × 86400 / max_domain_km_extent.
+# 0.5 m/s × 4 days × 86400 / 2056 km ≈ 0.084 normalized units.
+glider_max_speed_mps: 0.5
+init_position:     random  # random | top_left | center
+# robot_init_positions: [[0.25,0.25],[0.75,0.75]]  # or explicit per-robot coords
+n_init_observations: 50     # warm-start GP obs before adaptive loop (0 = cold-start)
+init_strategy:     random  # random | lh
+bg_mode:           once    # off | once | each_assim
+
+# Voronoi partitioning: restrict each robot to a spatial sub-region
+use_partitioning:         true    # true | false
+partition_seed_offset:    0       # added to episode_seed for partition RNG
+partition_type:           voronoi # future-proof; only "voronoi" supported
+partition_strict:         false   # if true, override out-of-region choices to nearest in-region
+partition_allow_spillover: true   # if true + not strict, accept out-of-region but count it
+# Dynamic vs static Voronoi partitioning:
+#   true:  recompute partition from current robot positions each step
+#   false: use seeded k-means++ partition fixed for the whole episode
+# Static wins when combined with bg_mode=once + travel constraints.
+partition_dynamic:        true
+# robot_region_map: [0, 1, 2, 3]  # optional: remap robot -> region
+
+# Non-myopic 1-step lookahead acquisition.
+# myopic   : policy picks based on GP std at CURRENT t_norm (existing behaviour).
+# lookahead: at end of step s, policy picks step-(s+1) locations using std at (s+1)/L.
+#            Step 1 is "cold start": robots placed at random in-region cells
+#            at t0 and sample there (no travel between t0 and step 1).
+#            Requires assimilation_interval=1 and obs_per_robot_per_assim=1.
+acquisition_mode:  lookahead   # myopic | lookahead
+cold_start_mode:   random_in_region   # random_in_region (future: lh_in_region)
+# With a spatio-temporal GP, re-visiting a location at a different time gives
+# genuinely new information.  allow_revisit=true lets robots re-sample spatial
+# locations they (or other robots) visited at earlier time steps.
+allow_revisit:     true
+
+# Debug mode: prints assimilation diagnostics and enables index assertions
+debug: false
+
+# Random seeds
+episode_seed_offset: 0
+candidate_seed:      42
+eval_seed:           123
+
+# ---------------------------------------------------------------------------
+# GP settings
+# ---------------------------------------------------------------------------
+gp_kernel:              matern
+gp_matern_nu:           1.5
+gp_length_scale_init:   0.05
+gp_length_scale_bounds: [0.01, 0.5]
+gp_noise_bounds:        [1e-5, 0.01]
+gp_constant_value_bounds: [0.01, 10.0]
+gp_normalize_y:         true
+gp_n_restarts:          2
+gp_prior_std:           0.07
+
+# Spatio-temporal GP (extends residual GP to 3D: row, col, time)
+# When gp_use_time=true, GP inputs become (row_norm, col_norm, t_norm)
+# with t_norm = step / episode_length ∈ (0, 1].
+gp_use_time:                 true
+gp_time_kernel:              matern    # matern | rbf
+gp_time_matern_nu:           1.5
+gp_time_length_scale_init:   0.05    # 0.05 t_norm = 3 days (< 1 FNO step, so lookahead matters)
+gp_time_length_scale_bounds: [0.01, 0.3]   # upper bound 0.3 t_norm = 18 days
+
+# ---------------------------------------------------------------------------
+# Policies to compare
+# ---------------------------------------------------------------------------
+# fno_only: no assimilation (pure FNO rollout baseline)
+# Others: FNO + periodic GP assimilation with the given acquisition policy
+
+policies:
+  fno_only:
+    type: fno_only         # special: no assimilation
+
+  random:
+    type: random
+
+  uncertainty_only:
+    type: uncertainty_only
+    lambda_dist: 0.0
+
+  hybrid_greedy:
+    type: hybrid_greedy
+    beta:        1.0
+    alpha:       0.5
+    lambda_dist: 0.0
+
+# ---------------------------------------------------------------------------
+# Output / qualitative settings
+# ---------------------------------------------------------------------------
+# Episode index (0-based) to use for qualitative visualization
+qual_episode: 0
+
+# Forecast steps at which to save qualitative field snapshots
+qual_steps: [5, 10, 15]

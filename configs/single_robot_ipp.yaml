@@ -1,0 +1,113 @@
+# =============================================================================
+# Single-Robot IPP Experiment Configuration
+# =============================================================================
+# Run with:
+#   python scripts/run_single_robot_ipp.py --config configs/single_robot_ipp.yaml
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+checkpoint_path: ./Models/FNO_single_trialPECstep.pt
+data_dir:        ./extracted_data/
+output_dir:      ./results/single_robot_ipp/
+
+# ---------------------------------------------------------------------------
+# Dataset (must match FNO training setup)
+# ---------------------------------------------------------------------------
+test_year: 2020
+lead:      4          # timesteps ahead (4 × 5-day = 20 days)
+delta_t:   1.0        # PEC integrator parameter (must match training)
+
+# FNO architecture (must match checkpoint)
+fno_modes1: 128
+fno_modes2: 128
+fno_width:  20
+
+# Device: 'auto' | 'cpu' | 'cuda'
+device: cpu
+inference_batch_size: 8
+
+# ---------------------------------------------------------------------------
+# IPP experiment settings
+# ---------------------------------------------------------------------------
+
+# How many test snapshots to use as IPP episodes
+n_episodes: 10
+
+# Sensing budget: number of sequential observations per episode
+sensing_budget: 50
+
+# Candidate waypoints: downsampled ocean cells the robot can visit
+n_candidates: 2000
+
+# Eval cells: subset used for per-step RMSE/MAE (0 = all ocean)
+n_eval_cells: 20000
+
+# Max step distance in normalized [0,1] coords (0 = no constraint)
+max_step_distance: 0.05
+
+# Robot starting position: 'random' | 'top_left' | 'center'
+init_position: top_left
+
+# ---------------------------------------------------------------------------
+# Warm-start: pre-observe K fixed points before the adaptive loop begins.
+# These represent "existing sensor data" (e.g. a mooring network or an
+# initial survey) and are NOT counted in the sensing_budget.
+# Set to 0 to disable (cold-start / blank GP prior).
+# ---------------------------------------------------------------------------
+n_init_observations: 20     # number of fixed background observations (0 = cold-start)
+init_strategy: lh           # 'lh' (Latin Hypercube, space-filling) or 'random'
+
+# Random seed offset (controls episode selection + robot init)
+episode_seed_offset: 0
+candidate_seed: 42
+eval_seed: 123
+
+# ---------------------------------------------------------------------------
+# GP settings (same as residual_gp experiment for consistency)
+# ---------------------------------------------------------------------------
+gp_kernel:             matern
+gp_matern_nu:          1.5
+gp_length_scale_init:  0.1           # initial length scale (normalized [0,1] coords)
+gp_length_scale_bounds: [0.05, 0.5]  # prevent collapsing to near-zero
+gp_noise_bounds:           [1e-5, 0.01]   # limit noise absorption (nugget)
+gp_constant_value_bounds:  [0.01, 10.0]  # signal amplitude bounds (sill)
+gp_normalize_y:        true
+gp_n_restarts:         1             # 0=fast inference; increase for better hyperparams
+gp_prior_std:          0.07          # prior std used before first observation
+
+# ---------------------------------------------------------------------------
+# Policies to run
+# ---------------------------------------------------------------------------
+# Each entry is a policy name → dict of acquisition-function parameters.
+# Supported policy types: hybrid_greedy, uncertainty_only, residual_mean,
+#                         random, raster
+policies:
+  hybrid_greedy:
+    type:        hybrid_greedy
+    beta:        1.0    # weight on GP std  (exploration)
+    alpha:       0.5    # weight on |GP mean| (exploitation)
+    lambda_dist: 0.0    # penalty for travel distance
+
+  uncertainty_only:
+    type:        uncertainty_only
+    lambda_dist: 0.0
+
+  residual_mean:
+    type:        residual_mean
+    lambda_dist: 0.0
+
+  random:
+    type:        random
+
+  raster:
+    type:        raster
+
+# ---------------------------------------------------------------------------
+# Output and diagnostics
+# ---------------------------------------------------------------------------
+# Steps at which to render qualitative panels (must be ≤ sensing_budget)
+qual_steps: [1, 5, 10, 20, 50]
+
+# Whether to run the shuffled-residual control experiment
+run_shuffle_control: false

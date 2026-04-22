@@ -1,0 +1,69 @@
+# =============================================================================
+# Residual GP Experiment Configuration
+# =============================================================================
+# Run with:
+#   python scripts/run_residual_gp_experiment.py --config configs/residual_gp.yaml
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+checkpoint_path: ./Models/FNO_single_trialPECstep.pt
+data_dir:        ./extracted_data/
+output_dir:      ./results/residual_gp/
+
+# ---------------------------------------------------------------------------
+# Dataset
+# ---------------------------------------------------------------------------
+test_year: 2020          # held-out validation year (NOT used in FNO training)
+lead:      4             # timesteps ahead (4 × 5-day = 20 days)
+delta_t:   1.0           # PEC integrator parameter (must match training)
+
+# Number of test samples to evaluate (max = 361 for 2020 data)
+# 50 is a good balance of statistical power vs runtime
+n_test_samples: 50
+
+# Random seed for selecting which test samples to use
+sample_seed: 0
+
+# ---------------------------------------------------------------------------
+# Observation budgets (sparse robot sampling)
+# ---------------------------------------------------------------------------
+observation_budgets: [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048] #[10, 25, 50, 100]
+
+# Number of random seeds per (sample, budget) combination
+# 5 gives good variance estimates without excessive compute
+n_seeds: 1 #5
+
+# ---------------------------------------------------------------------------
+# FNO architecture (must match checkpoint)
+# ---------------------------------------------------------------------------
+fno_modes1: 128
+fno_modes2: 128
+fno_width:  20
+
+# ---------------------------------------------------------------------------
+# GP settings
+# ---------------------------------------------------------------------------
+gp_kernel: matern          # 'matern' (recommended) or 'rbf'
+gp_matern_nu: 1.5          # Matérn smoothness: 0.5=exp, 1.5=once-diff, 2.5=twice-diff
+gp_length_scale_init: 0.1  # Initial length scale in normalized [0,1] coords
+                           # ~0.1 ≈ 10% of domain (~300 km for NE Pacific domain)
+gp_normalize_y: true       # Center GP targets (important if residuals have non-zero mean)
+gp_n_restarts: 5           # Optimizer restarts (0=fast, 2=better optima)
+
+# ---------------------------------------------------------------------------
+# Output and diagnostics
+# ---------------------------------------------------------------------------
+# Number of qualitative examples to save (one image per example)
+n_qualitative_examples: 6
+
+# Which budget to use for the improvement histogram
+histogram_budget: 50
+
+# Device: 'auto' uses CUDA if available, 'cpu' forces CPU (use if GPU OOM)
+# NOTE: RTX A400 (4 GB) is largely occupied by the display server.
+# Set to 'cuda' if GPU memory is free, otherwise keep 'cpu'.
+device: cpu
+
+# Batch size for FNO inference (reduce if GPU OOM)
+inference_batch_size: 8

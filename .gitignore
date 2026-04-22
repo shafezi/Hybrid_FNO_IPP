@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+
+# Data and weights — too large for the repo
+extracted_data/
+*.tar.gz
+*.nc
+*.npz
+*.h5
+*.hdf5
+Models/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+
+# Per-episode results — too large; only headline figures are tracked
+results/
+!results_sample/
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.run.xml
+*.bcf
+
+# Notebook checkpoints + outputs
+.ipynb_checkpoints/
+notebook_outputs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs from cluster runs
+*.log
+*.err
+*.out
+
+# Slides + media (regenerable from scripts; keep README pointers)
+*.pptx
+*.mp4
+*.avi
+*.mov
+~$*
+
+# Office lock files
+.~lock.*

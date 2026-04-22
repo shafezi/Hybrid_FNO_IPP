@@ -1,0 +1,83 @@
+# Temporary config: uncertainty_only vs gp_ucb, 20 robots
+checkpoint_path: ./Models/FNO_single_trialPECstep.pt
+data_dir:        ./extracted_data/
+output_dir:      ./results/tmp_ucb_vs_unc/
+
+test_year:  2020
+lead:       4
+delta_t:    1.0
+n_test_samples: 200
+
+fno_modes1: 128
+fno_modes2: 128
+fno_width:  20
+device: cpu
+
+n_episodes: 6
+episode_length: 25
+assimilation_interval: 1
+obs_per_assimilation: 1
+
+gp_mode: cumulative
+forecast_mode: fno
+rollout_lead_stride: 4
+assimilation_gain: 1.0
+
+n_robots:          20
+obs_per_robot_per_assim: 1
+n_candidates:      4000
+n_eval_cells:      200000
+max_step_distance: 0.0
+glider_max_speed_mps: 0.5
+init_position:     center
+n_init_observations: 50
+init_strategy:     random
+bg_mode:           once
+
+use_partitioning:         true
+partition_seed_offset:    0
+partition_type:           voronoi
+partition_strict:         false
+partition_allow_spillover: true
+partition_dynamic:        true
+
+acquisition_mode:  lookahead
+cold_start_mode:   random_in_region
+allow_revisit:     true
+
+debug: false
+episode_seed_offset: 0
+candidate_seed:      42
+eval_seed:           123
+
+gp_kernel:              matern
+gp_matern_nu:           1.5
+gp_length_scale_init:   0.1
+gp_length_scale_bounds: [0.05, 0.5]
+gp_noise_bounds:        [1e-5, 0.01]
+gp_constant_value_bounds: [0.01, 10.0]
+gp_normalize_y:         true
+gp_n_restarts:          2
+gp_prior_std:           0.07
+
+gp_use_time:                 true
+gp_time_kernel:              matern
+gp_time_matern_nu:           1.5
+gp_time_length_scale_init:   0.05
+gp_time_length_scale_bounds: [0.01, 0.3]
+
+policies:
+  fno_only:
+    type: fno_only
+
+  uncertainty_only:
+    type: uncertainty_only
+    lambda_dist: 0.0
+
+  gp_ucb:
+    type: gp_ucb
+    delta: 0.1
+    input_dim: 3
+
+qual_episode: 0
+qual_steps: [5, 10, 15]

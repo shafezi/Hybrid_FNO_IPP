@@ -1,0 +1,14 @@
+# Core ML
+torch>=2.2.0
+numpy>=1.24.0
+
+# Ocean/geoscience data
+xarray>=2024.1.0
+netCDF4>=1.6.0
+
+# Plotting
+matplotlib>=3.8.0
+
+# Notebook
+jupyterlab>=4.0.0
+ipykernel>=6.0.0
