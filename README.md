@@ -101,7 +101,6 @@ python scripts/make_talk_slides.py            # 7-min video deck (.pptx)
 ```
 release/
 ├── README.md                    # this file
-├── LICENSE                      # MIT
 ├── requirements.txt             # Python dependencies
 ├── ipp/                         # GP, acquisition, Voronoi
 ├── dynamic_ipp/                 # episode rollout
