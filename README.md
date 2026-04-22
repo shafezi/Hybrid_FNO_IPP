@@ -112,16 +112,3 @@ release/
 └── data_loader_SSH.py           # ROMS data loaders for FNO training
     data_loader_SSH_two_step.py
 ```
-
----
-
-
-## Acknowledgments
-
-ROMS team for the regional ocean reanalyses, and the OceanNet authors for the public model architecture and training recipe.
-
----
-
-## License
-
-MIT — see [`LICENSE`](LICENSE).
